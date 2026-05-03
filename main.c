@@ -20,6 +20,8 @@ Chip8_struct Chip8;
 
 void initValues(){
     Chip8.pc = 200;
+    Chip8.pc = 16;
+    
 }
 
     
@@ -44,15 +46,20 @@ int main(){
     while(running){
 
 	uint16_t opcode = (memory[pc] << 8) | memory[pc + 1];
-	switch(opcode  & xF000){
-	case x00E0:
-	    //clear display
-	    break;
-	case x00EE:
+	switch(opcode  & 0xF000){
+	case 0x0000:
+	    if(opcode & 0x0FFF == 0x0E0){
+		//clear display
+		break;
+	    }
 	    //return from subroutine
 	    break;
-	case x1:
-	    Chip8.pc = nextAddress
+	case x1000:
+	    uint16_t address = opcode & 0x0FFF;
+	    Chip8.pc = address;
+	    break;
+	case x2000:
+	    
 	    
 	
 	
