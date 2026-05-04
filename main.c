@@ -25,6 +25,31 @@ typedef struct
 
 Chip8_struct Chip8;
 
+// Áudio
+const int SAMPLE_RATE = 44100; // Taxa de amostragem padrão de CDs
+const int AMPLITUDE = 2000;	   // Volume do beep
+int audio_phase = 0;
+
+void audio_callback(void *userdata, uint8_t *stream, int len)
+{
+	int16_t *audio_data = (int16_t *)stream;
+	int samples = len / 2;
+	int half_period = SAMPLE_RATE / 440 / 2;
+
+	for (int i = 0; i < samples; i++)
+	{
+		if ((audio_phase / half_period) % 2 == 0)
+		{
+			audio_data[i] = AMPLITUDE;
+		}
+		else
+		{
+			audio_data[i] = -AMPLITUDE;
+		}
+		audio_phase++;
+	}
+}
+
 // Fontset
 uint8_t fontset[80] = {
 	0xF0, 0x90, 0x90, 0x90, 0xF0, // 0
@@ -84,10 +109,11 @@ void drawScreen(SDL_Renderer *renderer)
 	SDL_RenderPresent(renderer);
 	SDL_Delay(16); // Framerate
 }
-void quitScreen(SDL_Renderer *renderer, SDL_Window *window)
+void quitScreen(SDL_Renderer *renderer, SDL_Window *window, SDL_AudioDeviceID *audio_device)
 {
 	SDL_DestroyRenderer(renderer);
 	SDL_DestroyWindow(window);
+	SDL_CloseAudioDevice(*audio_device);
 	SDL_Quit();
 }
 
@@ -119,9 +145,19 @@ bool isPressed(uint8_t value)
 	return false;
 }
 
-int main()
+int main(int argc, char *argv[])
 {
-	FILE *ROM = fopen("Pong [Paul Vervalin, 1990].ch8", "rb");
+	if (argc < 2)
+	{
+		printf("Usage: %s <ROM file> [speed]\n", argv[0]);
+		return 0;
+	}
+	int cycles_per_frame = 10;
+	if (argc == 3)
+	{
+		cycles_per_frame = atoi(argv[2]);
+	}
+	FILE *ROM = fopen(argv[1], "rb");
 	if (ROM == NULL)
 	{
 		printf("Erro ao abrir o arquivo\n");
@@ -136,13 +172,25 @@ int main()
 	initValues();
 	loadFontSet();
 
-	// Inicialização da janela
-	SDL_Init(SDL_INIT_VIDEO);
+	// Inicialização da janela e áudio
+	SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO);
 	SDL_Window *window = SDL_CreateWindow("CHIP-8 Emulator",
 										  SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
 										  VIDEO_WIDTH * SCALE, VIDEO_HEIGHT * SCALE, 0);
 	SDL_Renderer *renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
+	SDL_AudioSpec want, have;
+	SDL_zero(want);
+	want.freq = SAMPLE_RATE;
+	want.format = AUDIO_S16SYS;
+	want.channels = 1;
+	want.samples = 2048;
+	want.callback = audio_callback;
 
+	SDL_AudioDeviceID audio_device = SDL_OpenAudioDevice(NULL, 0, &want, &have, 0);
+	if (audio_device == 0)
+	{
+		printf("Aviso: Falha ao inicializar o áudio: %s\n", SDL_GetError());
+	}
 	bool running = true;
 	srand(time(NULL));
 	SDL_Event event;
@@ -271,7 +319,7 @@ int main()
 				}
 			}
 		}
-		for (int z = 1; z <= 10; z++)
+		for (int z = 1; z <= cycles_per_frame; z++)
 		{
 			uint16_t opcode = (readNext(Chip8.PC) << 8) | readNext(Chip8.PC + 1);
 			Chip8.PC += 2;
@@ -588,10 +636,17 @@ int main()
 		if (Chip8.DT > 0)
 			Chip8.DT--;
 		if (Chip8.ST > 0)
+		{
 			Chip8.ST--;
+			SDL_PauseAudioDevice(audio_device, 0);
+		}
+		else
+		{
+			SDL_PauseAudioDevice(audio_device, 1);
+		}
 		clearScreen(renderer);
 		drawScreen(renderer);
 	}
-	quitScreen(renderer, window);
+	quitScreen(renderer, window, &audio_device);
 	return 0;
 }
