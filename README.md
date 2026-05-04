@@ -1,12 +1,10 @@
+
 # Emulador CHIP-8 em C
 
 Um interpretador completo da máquina virtual CHIP-8 escrito do zero em C e SDL2.
 
 Este projeto foi construído com o objetivo de aprofundar conhecimentos em arquitetura de computadores, manipulação de memória (baixo nível), operações bitwise e ciclo de execução de CPU (Fetch, Decode, Execute). Foi feito em um final de semana utilizando somente documentação e leves revisões com uma LLM.
-
-![Screenshot do Emulador](link_para_um_gif_ou_imagem_do_pong_rodando.gif)
-
-> _Dica: Grave um GIF curto jogando Pong ou Space Invaders e coloque o link aqui!_
+<img width="800" height="460" alt="demo" src="https://github.com/user-attachments/assets/2e4be181-3064-4d26-9339-ec0913697eb8" />
 
 ## Funcionalidades Implementadas
 
